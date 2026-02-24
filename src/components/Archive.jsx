@@ -15,7 +15,7 @@ function Archive({ onPostClick }) {
   };
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/posts')
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/posts/latest`)
       .then(res => res.json())
       .then(data => {
         setPosts(data);

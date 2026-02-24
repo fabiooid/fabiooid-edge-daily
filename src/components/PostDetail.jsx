@@ -10,13 +10,12 @@ function PostDetail({ postId, onBack, onNavigate }) {
     'Web3': '🌐',
     'Fintech': '💳',
     'AI': '🤖',
-    'Energy': '⚡',
-    'Quantum': '⚛️'
+    'Energy': '⚡'
   };
 
   useEffect(() => {
     // For now, fetch all posts and find the one we need
-    fetch('http://localhost:3001/api/posts')
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/posts/latest`) 
       .then(res => res.json())
       .then(data => {
         const foundPost = data.find(p => p.id === postId);

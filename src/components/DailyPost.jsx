@@ -12,7 +12,7 @@ function DailyPost() {
   };
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/posts/latest')
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/posts/latest`)
       .then(res => res.json())
       .then(data => {
         setPost(data);
