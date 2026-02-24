@@ -1,0 +1,86 @@
+.archive {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+  }
+  
+  .archive-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 2.5rem 0;
+    color: #37352f;
+  }
+  
+  .theme-filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .theme-filters button {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #37352f;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  
+  .theme-filters button:hover {
+    background-color: rgba(55, 53, 47, 0.08);
+  }
+  
+  .theme-filters button.active {
+    background-color: rgba(55, 53, 47, 0.08);
+  }
+  
+  .posts-list {
+    display: grid;
+    gap: 1rem;
+  }
+  
+  .post-card {
+    border: 1px solid #e9e9e7;
+    padding: 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    background-color: #ffffff;
+  }
+  
+  .post-card:hover {
+    background-color: rgba(55, 53, 47, 0.03);
+  }
+  
+  .post-theme {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(55, 53, 47, 0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .post-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0.75rem 0 0.5rem 0;
+    color: #37352f;
+    line-height: 1.3;
+  }
+  
+  .post-card-date {
+    font-size: 0.8125rem;
+    color: rgba(55, 53, 47, 0.65);
+    margin-bottom: 0.75rem;
+  }
+  
+  .post-card-excerpt {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: rgba(55, 53, 47, 0.8);
+    margin: 0;
+  }
