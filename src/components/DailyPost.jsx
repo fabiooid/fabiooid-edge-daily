@@ -8,8 +8,7 @@ function DailyPost() {
     'Web3': '🌐',
     'Fintech': '💳',
     'AI': '🤖',
-    'Energy': '⚡',
-    'Quantum': '⚛️'
+    'Energy': '⚡'
   };
 
   useEffect(() => {
