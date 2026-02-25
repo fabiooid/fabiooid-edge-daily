@@ -1,14 +1,9 @@
 // Determines which theme to use based on the day of the week
 function getTodaysTheme() {
-  // TESTING: Uncomment one line below to test different days
-  // const dayOfWeek = 1; // Monday = AI
-  // const dayOfWeek = 2; // Tuesday = Web3
-  // const dayOfWeek = 3; // Wednesday = Fintech
-  // const dayOfWeek = 4; // Thursday = Energy
-  
-  // PRODUCTION: Use actual day
+  // Get current day in Hong Kong timezone
   const today = new Date();
-  const dayOfWeek = today.getDay();
+  const hkDate = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong' }));
+  const dayOfWeek = hkDate.getDay();
   
   // Schedule: Mon=AI, Tue=Web3, Wed=Fintech, Thu=Energy
   const themeSchedule = {
