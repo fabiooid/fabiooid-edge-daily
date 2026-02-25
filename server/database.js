@@ -6,7 +6,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, 'daily-learning.db');
+const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH 
+  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'daily-learning.db')
+  : path.join(__dirname, 'daily-learning.db');
 
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {

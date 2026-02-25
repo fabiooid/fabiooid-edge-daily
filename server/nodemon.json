@@ -1,0 +1,3 @@
+{
+    "ignore": ["*.db", "node_modules"]
+}
