@@ -8,22 +8,25 @@ function Archive({ onPostClick }) {
   const [loading, setLoading] = useState(true);
 
   const themeEmojis = {
+    'AI': '🤖',
     'Web3': '🌐',
     'Fintech': '💳',
-    'AI': '🤖',
     'Energy': '⚡',
   };
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/posts/latest`)
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/posts`)
       .then(res => res.json())
       .then(data => {
-        setPosts(data);
-        setFilteredPosts(data);
+        const postsArray = Array.isArray(data) ? data : [];
+        setPosts(postsArray);
+        setFilteredPosts(postsArray);
         setLoading(false);
       })
       .catch(err => {
         console.error('Error fetching posts:', err);
+        setPosts([]);
+        setFilteredPosts([]);
         setLoading(false);
       });
   }, []);
@@ -68,7 +71,6 @@ function Archive({ onPostClick }) {
         >
           {themeEmojis.Fintech} Fintech
         </button>
-        
         <button 
           className={selectedTheme === 'Energy' ? 'active' : ''}
           onClick={() => filterByTheme('Energy')}
@@ -78,16 +80,23 @@ function Archive({ onPostClick }) {
       </div>
 
       <div className="posts-list">
-        {filteredPosts.map(post => (
-          <div key={post.id} className="post-card" onClick={() => onPostClick(post.id)}>
-            <span className="post-theme">{themeEmojis[post.theme]} {post.theme}</span>
-            <h2 className="post-card-title">{post.title}</h2>
-            <p className="post-card-date">{post.date}</p>
-            <p className="post-card-excerpt">
-              {post.content.substring(0, 150)}...
-            </p>
+        {filteredPosts.length > 0 ? (
+          filteredPosts.map(post => (
+            <div key={post.id} className="post-card" onClick={() => onPostClick(post.id)}>
+              <span className="post-theme">{themeEmojis[post.theme]} {post.theme}</span>
+              <h2 className="post-card-title">{post.title}</h2>
+              <p className="post-card-date">{post.date}</p>
+              <p className="post-card-excerpt">
+                {post.content.substring(0, 150)}...
+              </p>
+            </div>
+          ))
+        ) : (
+          <div className="empty-state">
+            <p>No posts yet.</p>
+            <p className="empty-state-sub">Check back on Monday for the first AI post!</p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

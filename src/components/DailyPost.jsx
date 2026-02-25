@@ -25,7 +25,15 @@ function DailyPost() {
   }, []);
 
   if (loading) return <div>Loading...</div>;
-  if (!post) return <div>No posts yet</div>;
+  
+  if (!post) return (
+    <div className="daily-post">
+      <div className="empty-state">
+        <p>No posts yet.</p>
+        <p className="empty-state-sub">Check back on Monday for the first AI post!</p>
+      </div>
+    </div>
+  );
 
   // Your existing JSX using post.title, post.content, etc.
   return (
