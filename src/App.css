@@ -57,3 +57,12 @@
   cursor: pointer;
   font: inherit;
 }
+
+.nav-buttons a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.nav-buttons button {
+  cursor: pointer;
+}

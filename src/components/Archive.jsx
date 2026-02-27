@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import './Archive.css';
 
-function Archive({ onPostClick }) {
+function Archive() {
   const [posts, setPosts] = useState([]);
   const [filteredPosts, setFilteredPosts] = useState([]);
   const [selectedTheme, setSelectedTheme] = useState('All');
@@ -82,14 +83,20 @@ function Archive({ onPostClick }) {
       <div className="posts-list">
         {filteredPosts.length > 0 ? (
           filteredPosts.map(post => (
-            <div key={post.id} className="post-card" onClick={() => onPostClick(post.id)}>
-              <span className="post-theme">{themeEmojis[post.theme]} {post.theme}</span>
-              <h2 className="post-card-title">{post.title}</h2>
-              <p className="post-card-date">{post.date}</p>
-              <p className="post-card-excerpt">
-                {post.content.substring(0, 150)}...
-              </p>
-            </div>
+            <Link 
+              key={post.id} 
+              to={`/post/${post.id}`} 
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
+              <div className="post-card">
+                <span className="post-theme">{themeEmojis[post.theme]} {post.theme}</span>
+                <h2 className="post-card-title">{post.title}</h2>
+                <p className="post-card-date">{post.date}</p>
+                <p className="post-card-excerpt">
+                  {post.content.substring(0, 150)}...
+                </p>
+              </div>
+            </Link>
           ))
         ) : (
           <div className="empty-state">
