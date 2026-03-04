@@ -1,8 +1,7 @@
-import cron from 'node-cron';
-import { getTodaysTheme } from './theme-scheduler.js';
 import Anthropic from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
 import { createPost } from './database.js';
+import { getTodaysTheme } from './theme-scheduler.js';
 
 dotenv.config();
 
@@ -10,116 +9,118 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-async function generateDailyPost() {
+async function generateAndSavePost() {
+  console.log('Generating daily post...\n');
+  
   const theme = getTodaysTheme();
 
   if (!theme) {
     console.log('⏸️  No post scheduled for today.');
+    console.log('Posts are generated on: Monday (Web3), Wednesday (Fintech), Friday (AI)');
     return;
   }
 
-  console.log(`📅 Generating ${theme} post...\n`);
+  console.log(`📅 Today's theme: ${theme}\n`);
   
-  try {
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      temperature: 0.7,
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search"
-        }
-      ],
-      messages: [
-        { 
-          role: 'user', 
-          content: `Search for trending ${theme} topics from this week from online articles and news. Find something interesting and educational for beginners.
-
-        IMPORTANT: Respond ONLY with the formatted post below. Do not include any commentary, explanations, or notes about your process.
-
-        Format (use EXACTLY this format, nothing else):
-        TITLE: [catchy title]
-        CONTENT: [2-3 paragraph explanation, 250-300 words]
-        LINKS:
-        - [Article title 1] URL1
-        - [Article title 2] URL2
-        - [Article title 3] URL3
-
-        The LINKS must be directly related to the specific topic you're explaining in the CONTENT. They should help readers learn MORE about this exact topic, not just general ${theme} information. Use real URLs from your search results about this specific topic.`
-        }
-      ],
-    });
-
-    // Extract text from response
-    let response = '';
-    for (const block of message.content) {
-      if (block.type === 'text') {
-        response += block.text;
+  const message = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    temperature: 0.7,
+    tools: [
+      {
+        type: "web_search_20250305",
+        name: "web_search"
       }
-    }
+    ],
+    messages: [
+      { 
+        role: 'user', 
+        content: `Search for trending ${theme} topics from this week from online articles and news. Find a specific, newsworthy development that would interest someone learning about ${theme}.
 
-    // Parse title, content, and links
-    const titleMatch = response.match(/TITLE: (.+)/);
-    const contentMatch = response.match(/CONTENT: ([\s\S]+?)(?=LINKS:|$)/);
-    const linksMatch = response.match(/LINKS:([\s\S]+)/);
+        Write an educational article that explains this topic clearly and factually. Use simple language naturally without meta-commentary about the writing or audience. Explain concepts as if talking to an intelligent friend who's unfamiliar with the topic.
 
-    const title = titleMatch ? titleMatch[1].trim() : `Understanding ${theme}`;
-    let content = contentMatch ? contentMatch[1].trim() : response;
-
-    // Parse links
-    let links = [];
-    if (linksMatch) {
-      const linksText = linksMatch[1];
-      const linkLines = linksText.split('\n').filter(line => line.trim().startsWith('-'));
-      
-      links = linkLines.map(line => {
-        const match = line.match(/- (.+?) (https?:\/\/.+)/);
-        if (match) {
-          return { title: match[1].trim(), url: match[2].trim() };
-        }
-        return null;
-      }).filter(Boolean);
-    }
-
-    // Fallback links
-    if (links.length === 0) {
-      links = [
-        { title: `Learn More About ${theme}`, url: 'https://www.google.com/search?q=' + theme }
-      ];
-    }
-
-    // Create the post
-    const post = await createPost(
-      theme,
-      title,
-      content,
-      links,
-      new Date().toISOString().split('T')[0]
-    );
-    
-    console.log('✅ Post created successfully!');
-    console.log('📝 Title:', title);
-    console.log('🎯 Theme:', theme);
-  } catch (error) {
-    console.error('❌ Error generating post:', error);
-  }
-}
-
-// Schedule: Run at 8:00 AM Hong Kong time, Monday/Wednesday/Friday
-// Cron format: minute hour day month day-of-week
-// 0 8 * * 1,3,5 = 8am on Mon/Wed/Fri
-function startScheduler() {
-  console.log('🕐 Scheduler started!');
-  console.log('📅 Posts will generate at 7:00 AM HKT on Mon/Tue/Wed/Thu');
-console.log('🎯 Themes: Mon=AI, Tue=Web3, Wed=Fintech, Thu=Energy');
-  
-  cron.schedule('0 7 * * 1,2,3,4', () => {
-    console.log('\n⏰ Scheduled job triggered:', new Date().toLocaleString());
-    generateDailyPost();
-  }, {
-    timezone: "Asia/Hong_Kong"
+        CRITICAL REQUIREMENTS FOR LINKS:
+        - You MUST include exactly 3 links
+        - Use ACTUAL URLs from your search results
+        - NEVER create Google search links like "https://www.google.com/search?q=..."
+        - Links must be to real articles, documentation, or resources you found
+        - Each link should be highly relevant to the specific topic discussed
+        
+        IMPORTANT: Respond ONLY with the formatted post below. Do not include any commentary, explanations, or notes about your process.
+        
+        Format (use EXACTLY this format, nothing else):
+        TITLE: [catchy title about the specific development]
+        CONTENT: [2-3 paragraphs explaining the topic clearly and factually, 250-300 words. Write directly without phrases like "what makes this interesting" or "for beginners". Just explain the concept clearly using simple language.]
+        LINKS:
+        - [Actual article title from search results] [Actual URL from search results]
+        - [Actual article title from search results] [Actual URL from search results]
+        - [Actual article title from search results] [Actual URL from search results]`
+      }
+    ],
   });
+
+  // Extract text from response (handling tool use)
+  let response = '';
+  for (const block of message.content) {
+    if (block.type === 'text') {
+      response += block.text;
+    }
+  }
+
+  console.log('Full response:\n', response);
+
+  // Parse title, content, and links
+  const titleMatch = response.match(/TITLE: (.+)/);
+  const contentMatch = response.match(/CONTENT: ([\s\S]+?)(?=LINKS:|$)/);
+  const linksMatch = response.match(/LINKS:([\s\S]+)/);
+
+  const title = titleMatch ? titleMatch[1].trim() : `Understanding ${theme}`;
+  let content = contentMatch ? contentMatch[1].trim() : response;
+
+  // Parse links
+  let links = [];
+  if (linksMatch) {
+    const linksText = linksMatch[1];
+    const linkLines = linksText.split('\n').filter(line => line.trim().startsWith('-'));
+    
+    links = linkLines.map(line => {
+      const match = line.match(/- (.+?) (https?:\/\/.+)/);
+      if (match) {
+        return { title: match[1].trim(), url: match[2].trim() };
+      }
+      return null;
+    }).filter(Boolean);
+  }
+
+  // Validate links - reject Google search URLs
+  if (links.some(link => link.url.includes('google.com/search'))) {
+    console.error('❌ ERROR: Generated Google search links instead of real URLs');
+    console.log('Links found:', links);
+    throw new Error('Invalid links generated - contains Google search URLs');
+  }
+
+  // Require exactly 3 links
+  if (links.length !== 3) {
+    console.error(`❌ ERROR: Expected 3 links, got ${links.length}`);
+    console.log('Links found:', links);
+    throw new Error(`Invalid number of links: ${links.length}`);
+  }
+
+  console.log('\n📎 Found', links.length, 'valid links');
+
+  // Create the post in database
+  const post = await createPost(
+    theme,
+    title,
+    content,
+    links,
+    new Date().toISOString().split('T')[0]
+  );
+  
+  console.log('\n✅ Post created with ID:', post.id);
+  console.log('📝 Title:', title);
+  console.log('🎯 Theme:', theme);
+  console.log('\nRefresh your browser to see it!');
 }
 
-export { startScheduler, generateDailyPost };
+generateAndSavePost();
