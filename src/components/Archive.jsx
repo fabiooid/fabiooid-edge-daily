@@ -10,6 +10,8 @@ function Archive() {
   const [filteredPosts, setFilteredPosts] = useState([]);
   const [selectedTheme, setSelectedTheme] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const POSTS_PER_PAGE = 5;
 
   const themeEmojis = {
     'AI': '🤖',
@@ -37,12 +39,19 @@ function Archive() {
 
   const filterByTheme = (theme) => {
     setSelectedTheme(theme);
+    setCurrentPage(1);
     if (theme === 'All') {
       setFilteredPosts(posts);
     } else {
       setFilteredPosts(posts.filter(post => post.theme === theme));
     }
   };
+
+  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
+  const paginatedPosts = filteredPosts.slice(
+    (currentPage - 1) * POSTS_PER_PAGE,
+    currentPage * POSTS_PER_PAGE
+  );
 
   if (loading) return <Loading />;
 
@@ -96,11 +105,11 @@ function Archive() {
       </div>
 
       <div className="posts-list">
-        {filteredPosts.length > 0 ? (
-          filteredPosts.map(post => (
-            <Link 
-              key={post.id} 
-              to={`/post/${post.slug}`} 
+        {paginatedPosts.length > 0 ? (
+          paginatedPosts.map(post => (
+            <Link
+              key={post.id}
+              to={`/post/${post.slug}`}
               style={{ textDecoration: 'none', color: 'inherit' }}
             >
               <div className="post-card">
@@ -120,6 +129,26 @@ function Archive() {
           </div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            className="pagination-btn"
+            onClick={() => setCurrentPage(p => p - 1)}
+            disabled={currentPage === 1}
+          >
+            ← Previous
+          </button>
+          <span className="pagination-info">{currentPage} / {totalPages}</span>
+          <button
+            className="pagination-btn"
+            onClick={() => setCurrentPage(p => p + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
