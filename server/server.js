@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { initializeDatabase, getLatestPost, getAllPosts, getPostBySlug } from './database.js';
+import { startScheduler } from './scheduler.js';
 
 dotenv.config();
 
@@ -10,6 +11,9 @@ const PORT = process.env.PORT || 3001;
 
 // Initialize database when server starts
 initializeDatabase();
+
+// Start scheduler
+startScheduler();
 
 app.use(cors());
 app.use(express.json());

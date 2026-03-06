@@ -1,3 +1,4 @@
+import cron from 'node-cron';
 import Anthropic from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
 import { createPost } from './database.js';
@@ -123,4 +124,12 @@ async function generateAndSavePost() {
   console.log('\nRefresh your browser to see it!');
 }
 
-generateAndSavePost();
+export function startScheduler() {
+  // Run at 07:30 Hong Kong time every day
+  cron.schedule('30 7 * * *', () => {
+    console.log('⏰ Cron triggered - generating daily post...');
+    generateAndSavePost().catch(err => console.error('Scheduler error:', err));
+  }, { timezone: 'Asia/Hong_Kong' });
+
+  console.log('📅 Scheduler started - posts will generate at 07:30 HKT on scheduled days');
+}
