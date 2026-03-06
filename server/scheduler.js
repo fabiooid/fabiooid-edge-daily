@@ -17,7 +17,7 @@ async function generateAndSavePost() {
 
   if (!theme) {
     console.log('⏸️  No post scheduled for today.');
-    console.log('Posts are generated on: Monday (Web3), Wednesday (Fintech), Friday (AI)');
+    console.log('Posts are generated on: Monday (AI), Tuesday (Web3), Wednesday (Fintech), Thursday (Energy)');
     return;
   }
 
@@ -115,7 +115,7 @@ async function generateAndSavePost() {
     title,
     content,
     links,
-    new Date().toISOString().split('T')[0]
+    new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Hong_Kong' })
   );
   
   console.log('\n✅ Post created with ID:', post.id);

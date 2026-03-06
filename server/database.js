@@ -172,7 +172,7 @@ function createPost(theme, title, content, links, date) {
 // Get latest post
 function getLatestPost() {
   return new Promise((resolve, reject) => {
-    const sql = `SELECT * FROM posts ORDER BY created_at DESC LIMIT 1`;
+    const sql = `SELECT * FROM posts ORDER BY date DESC LIMIT 1`;
     
     db.get(sql, (err, row) => {
       if (err) reject(err);

@@ -55,7 +55,7 @@ function DailyPost() {
       <div className="further-reading">
         <h3 className="further-reading-heading">Further Reading</h3>
         <ul className="further-reading-links">
-          {JSON.parse(post.links).map((link, index) => (
+          {(() => { try { return JSON.parse(post.links); } catch { return []; } })().map((link, index) => (
             <li key={index}>
               <a href={link.url} target="_blank" rel="noopener noreferrer">
                 {link.title}
