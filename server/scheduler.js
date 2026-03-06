@@ -10,6 +10,47 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+const APPROVED_SOURCES = {
+  AI: [
+    'techcrunch.com', 'technologyreview.com', 'wired.com', 'theverge.com',
+    'venturebeat.com', 'nature.com', 'arxiv.org', 'openai.com',
+    'deepmind.google', 'anthropic.com', 'reuters.com', 'bloomberg.com'
+  ],
+  Web3: [
+    'coindesk.com', 'theblock.co', 'decrypt.co', 'ethereum.org',
+    'messari.io', 'wired.com', 'reuters.com', 'bloomberg.com', 'ft.com'
+  ],
+  Fintech: [
+    'ft.com', 'bloomberg.com', 'reuters.com', 'wsj.com',
+    'finextra.com', 'pymnts.com', 'techcrunch.com', 'wired.com'
+  ],
+  Energy: [
+    'reuters.com', 'bloomberg.com', 'iea.org', 'nature.com',
+    'carbonbrief.org', 'theguardian.com', 'wired.com', 'ft.com'
+  ]
+};
+
+async function validateLinks(links) {
+  const results = await Promise.all(links.map(async (link) => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(link.url, { method: 'HEAD', signal: controller.signal, redirect: 'follow' });
+      clearTimeout(timeout);
+      if (res.status === 404) throw new Error(`404 Not Found`);
+      return { link, ok: true };
+    } catch (err) {
+      return { link, ok: false, reason: err.message };
+    }
+  }));
+
+  const failed = results.filter(r => !r.ok);
+  if (failed.length > 0) {
+    const details = failed.map(r => `${r.link.url} → ${r.reason}`).join('\n');
+    throw new Error(`Link validation failed:\n${details}`);
+  }
+}
+
 async function generateAndSavePost() {
   console.log('Generating daily post...\n');
   
@@ -34,8 +75,8 @@ async function generateAndSavePost() {
       }
     ],
     messages: [
-      { 
-        role: 'user', 
+      {
+        role: 'user',
         content: `Search for trending ${theme} topics from this week from online articles and news. Find a specific, newsworthy development that would interest someone learning about ${theme}.
 
         Write an educational article that explains this topic clearly and factually. Use simple language naturally without meta-commentary about the writing or audience. Explain concepts as if talking to an intelligent friend who's unfamiliar with the topic.
@@ -46,9 +87,11 @@ async function generateAndSavePost() {
         - NEVER create Google search links like "https://www.google.com/search?q=..."
         - Links must be to real articles, documentation, or resources you found
         - Each link should be highly relevant to the specific topic discussed
-        
+        - ONLY use links from these reputable sources: ${APPROVED_SOURCES[theme].join(', ')}
+        - Do not use any other domains — if you cannot find 3 links from the approved sources, search more specifically
+
         IMPORTANT: Respond ONLY with the formatted post below. Do not include any commentary, explanations, or notes about your process.
-        
+
         Format (use EXACTLY this format, nothing else):
         TITLE: [catchy title about the specific development]
         CONTENT: [2-3 paragraphs explaining the topic clearly and factually, 250-300 words. Write directly without phrases like "what makes this interesting" or "for beginners". Just explain the concept clearly using simple language.]
@@ -108,6 +151,11 @@ async function generateAndSavePost() {
   }
 
   console.log('\n📎 Found', links.length, 'valid links');
+
+  // Validate all links are reachable
+  console.log('🔍 Validating links...');
+  await validateLinks(links);
+  console.log('✅ All links validated');
 
   // Create the post in database
   const post = await createPost(
