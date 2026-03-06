@@ -91,7 +91,7 @@ app.post('/api/fix-links', async (req, res) => {
     },
     {
       id: 5, links: [
-        { title: 'AlphaFold 3 predicts the structure and interactions of all life's molecules', url: 'https://deepmind.google/discover/blog/alphafold-3-predicts-the-structure-and-interactions-of-all-of-lifes-molecules/' },
+        { title: 'AlphaFold 3 predicts the structure and interactions of all living molecules', url: 'https://deepmind.google/discover/blog/alphafold-3-predicts-the-structure-and-interactions-of-all-of-lifes-molecules/' },
         { title: 'AlphaFold server', url: 'https://alphafoldserver.com' },
         { title: 'AlphaFold 3: Google DeepMind maps a universe of biomolecules', url: 'https://www.statnews.com/2024/05/08/drug-discovery-alphafold-3-google-deepmind-isomorphic-labs/' },
       ]
