@@ -10,8 +10,8 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const AIRTABLE_BASE_ID = 'appoIxFYE4DaForIe';
-const AIRTABLE_TABLE_ID = 'tblzuHlCdN3dCQDmY';
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
+const AIRTABLE_TABLE_ID = process.env.AIRTABLE_TABLE_ID;
 
 async function fetchApprovedSources() {
   const token = process.env.AIRTABLE_TOKEN;
@@ -48,7 +48,13 @@ async function suggestNewSources(links, theme) {
   let suggested = 0;
   for (const link of links) {
     if (suggested >= 2) break;
-    const domain = new URL(link.url).hostname.replace('www.', '');
+    let domain;
+    try {
+      domain = new URL(link.url).hostname.replace('www.', '');
+    } catch {
+      continue;
+    }
+    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain)) continue;
     if (allDomains.has(domain)) continue;
     if (BLOCKLISTED_DOMAINS.includes(domain)) continue;
     await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_ID}`, {

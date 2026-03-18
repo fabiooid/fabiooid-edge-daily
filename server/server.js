@@ -15,7 +15,7 @@ initializeDatabase();
 // Start scheduler
 startScheduler();
 
-app.use(cors());
+app.use(cors({ origin: process.env.FRONTEND_URL || 'https://edgedaily.vercel.app' }));
 app.use(express.json());
 
 app.get('/api/health', (req, res) => {
