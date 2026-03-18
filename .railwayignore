@@ -3,6 +3,5 @@
 /public
 vite.config.js
 index.html
-package.json
-package-lock.json
-z
+/package.json
+/package-lock.json
