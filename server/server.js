@@ -1,13 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import Database from 'better-sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { initializeDatabase, getLatestPost, getAllPosts, getPostBySlug } from './database.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { initializeDatabase, getLatestPost, getAllPosts, getPostBySlug, updatePostLinks } from './database.js';
 import { startScheduler } from './scheduler.js';
 
 dotenv.config();
@@ -62,8 +56,7 @@ app.get('/api/posts/:slug', async (req, res) => {
 });
 
 // Temporary: patch broken links
-app.post('/api/fix-links-2', (req, res) => {
-  const db = new Database(path.join(__dirname, '../data/posts.db'));
+app.post('/api/fix-links-2', async (req, res) => {
   const fixes = [
     {
       slug: 'jd5a8gs',
@@ -106,12 +99,10 @@ app.post('/api/fix-links-2', (req, res) => {
       ]
     }
   ];
-  const stmt = db.prepare('UPDATE posts SET links = ? WHERE slug = ?');
-  const results = fixes.map(f => {
-    const info = stmt.run(JSON.stringify(f.links), f.slug);
-    return { slug: f.slug, updated: info.changes };
-  });
-  db.close();
+  const results = await Promise.all(fixes.map(async f => {
+    const r = await updatePostLinks(f.slug, f.links);
+    return { slug: f.slug, updated: r.changes };
+  }));
   res.json({ ok: true, results });
 });
 

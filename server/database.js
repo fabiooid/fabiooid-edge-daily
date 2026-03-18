@@ -217,11 +217,22 @@ function getPostsByTheme(theme) {
   });
 }
 
+// Update links for a post by slug
+function updatePostLinks(slug, links) {
+  return new Promise((resolve, reject) => {
+    db.run('UPDATE posts SET links = ? WHERE slug = ?', [JSON.stringify(links), slug], function(err) {
+      if (err) reject(err);
+      else resolve({ changes: this.changes });
+    });
+  });
+}
+
 export {
     initializeDatabase,
     createPost,
     getLatestPost,
     getPostBySlug,
     getAllPosts,
-    getPostsByTheme
+    getPostsByTheme,
+    updatePostLinks
 };
