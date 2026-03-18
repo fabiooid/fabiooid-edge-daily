@@ -21,8 +21,11 @@ async function fetchApprovedSources() {
   const sources = { AI: [], Web3: [], Fintech: [], Energy: [] };
   for (const record of data.records) {
     const { Domain, Theme } = record.fields;
-    if (Domain && Theme && sources[Theme]) {
-      sources[Theme].push(Domain);
+    if (Domain && Theme) {
+      const themes = Array.isArray(Theme) ? Theme : [Theme];
+      for (const t of themes) {
+        if (sources[t]) sources[t].push(Domain);
+      }
     }
   }
   console.log('📋 Loaded sources from Airtable:', Object.entries(sources).map(([k, v]) => `${k}(${v.length})`).join(', '));
