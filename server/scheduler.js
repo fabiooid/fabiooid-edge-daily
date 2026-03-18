@@ -10,28 +10,24 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const APPROVED_SOURCES = {
-  AI: [
-    'techcrunch.com', 'technologyreview.com', 'wired.com', 'theverge.com',
-    'venturebeat.com', 'openai.com', 'deepmind.google', 'anthropic.com',
-    'reuters.com', 'bloomberg.com', 'ft.com', 'wsj.com', 'blog.google'
-  ],
-  Web3: [
-    'coindesk.com', 'theblock.co', 'decrypt.co', 'ethereum.org',
-    'messari.io', 'wired.com', 'reuters.com', 'bloomberg.com', 'ft.com',
-    'techcrunch.com', 'blog.coinbase.com'
-  ],
-  Fintech: [
-    'ft.com', 'bloomberg.com', 'reuters.com', 'wsj.com',
-    'finextra.com', 'pymnts.com', 'techcrunch.com', 'wired.com',
-    'sifted.eu', 'thefinancialbrand.com'
-  ],
-  Energy: [
-    'reuters.com', 'bloomberg.com', 'carbonbrief.org', 'theguardian.com',
-    'wired.com', 'ft.com', 'wsj.com', 'techcrunch.com',
-    'technologyreview.com', 'electrek.co'
-  ]
-};
+const AIRTABLE_BASE_ID = 'appoIxFYE4DaForIe';
+const AIRTABLE_TABLE_ID = 'tblzuHlCdN3dCQDmY';
+
+async function fetchApprovedSources() {
+  const token = process.env.AIRTABLE_TOKEN;
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_ID}?filterByFormula=%7BStatus%7D%3D'Active'`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await res.json();
+  const sources = { AI: [], Web3: [], Fintech: [], Energy: [] };
+  for (const record of data.records) {
+    const { Domain, Theme } = record.fields;
+    if (Domain && Theme && sources[Theme]) {
+      sources[Theme].push(Domain);
+    }
+  }
+  console.log('📋 Loaded sources from Airtable:', Object.entries(sources).map(([k, v]) => `${k}(${v.length})`).join(', '));
+  return sources;
+}
 
 async function validateLinks(links) {
   const results = await Promise.all(links.map(async (link) => {
@@ -66,7 +62,9 @@ async function generateAndSavePost() {
   }
 
   console.log(`📅 Today's theme: ${theme}\n`);
-  
+
+  const APPROVED_SOURCES = await fetchApprovedSources();
+
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 2048,
