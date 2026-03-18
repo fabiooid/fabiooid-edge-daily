@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { initializeDatabase, getLatestPost, getAllPosts, getPostBySlug } from './database.js';
+import { initializeDatabase, getLatestPost, getAllPosts, getPostBySlug, updatePostLinks } from './database.js';
 import { startScheduler } from './scheduler.js';
 
 dotenv.config();
@@ -54,6 +54,7 @@ app.get('/api/posts/:slug', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch post' });
   }
 });
+
 
 
 app.listen(PORT, () => {
