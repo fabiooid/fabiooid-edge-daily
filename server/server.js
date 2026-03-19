@@ -16,6 +16,7 @@ initializeDatabase();
 // Start scheduler
 startScheduler();
 
+app.set('trust proxy', 1);
 app.use(cors({ origin: process.env.FRONTEND_URL || 'https://edgedaily.vercel.app' }));
 app.use(express.json());
 app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false }));
