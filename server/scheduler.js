@@ -130,7 +130,8 @@ async function generateAndSavePost() {
         - Links must be to real articles, documentation, or resources you found
         - Each link should be highly relevant to the specific topic discussed
         - ONLY use links from these reputable sources: ${APPROVED_SOURCES[theme].join(', ')}
-        - Do not use any other domains — if you cannot find 3 links from the approved sources, search more specifically
+        - Do not use any other domains
+        - If you cannot find 3 links from the approved sources for a topic, that topic is too niche — pick a different, broader ${theme} topic and try again until you find one with 3 approved sources
 
         IMPORTANT: Respond ONLY with the formatted post below. Do not include any commentary, explanations, or notes about your process.
 
