@@ -98,7 +98,7 @@ function buildPrompt(theme, approvedSources) {
 
   return `Search for trending ${theme} topics from this week from online articles and news. Find a specific, newsworthy development that would interest someone learning about ${theme}.${theme === 'Energy' ? ' Focus on energy technology: EVs, batteries, charging infrastructure, solar, wind, grid storage, and clean energy innovation. Think about what engineers and product people at companies like Tesla, Rivian, or utility-scale solar firms would want to read.' : ''}
 
-        Write for a reader who follows tech and business news but is not an expert. Don't define basic concepts — assume basic familiarity. Use plain language, but don't over-simplify. Get straight to the facts, what's new and why it matters.
+        Write for a reader who follows tech and business news but is not an expert. Assume basic familiarity. Write as a professional journalist from a news outlet like TechCrunch, Forbes, The Verge, or Wired. Write this as a tech news article.
 
         CRITICAL REQUIREMENTS FOR LINKS:
         - You MUST include exactly 3 links
@@ -112,7 +112,7 @@ function buildPrompt(theme, approvedSources) {
 
         Format (use EXACTLY this format, nothing else):
         TITLE: [catchy title about the specific development]
-        CONTENT: [2-3 paragraphs, 250-300 words. Get straight to the facts. No definitions of basic concepts, no meta-commentary, no phrases like "what makes this interesting" or "to understand this". Write as if the reader already knows the space.]
+        CONTENT: [2-3 paragraphs, 250-300 words. Tech news article style — lead with the news, then context and significance. No meta-commentary, no over-explaining basic concepts.]
         LINKS:
         - [Actual article title from search results] [Actual URL from search results]
         - [Actual article title from search results] [Actual URL from search results]
