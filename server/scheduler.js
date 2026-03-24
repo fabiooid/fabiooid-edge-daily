@@ -98,7 +98,7 @@ function buildPrompt(theme, approvedSources) {
 
   return `Search for trending ${theme} topics from this week from online articles and news. Find a specific, newsworthy development that would interest someone learning about ${theme}.${theme === 'Energy' ? ' Focus on energy technology: EVs, batteries, charging infrastructure, solar, wind, grid storage, and clean energy innovation. Think about what engineers and product people at companies like Tesla, Rivian, or utility-scale solar firms would want to read.' : ''}
 
-        Write for a reader who follows tech and business news but is not an expert. Assume basic familiarity. Write as a professional journalist from a news outlet like TechCrunch, Forbes, The Verge, or Wired. Write this as a tech news article.
+        Write for a reader who follows tech and business news but is not an expert. Assume basic familiarity. Write as a professional journalist from a news outlet like TechCrunch, Forbes, The Verge, or Wired. Write this as a tech news article. Never use em dashes (—).
 
         CRITICAL REQUIREMENTS FOR LINKS:
         - You MUST include exactly 3 links
