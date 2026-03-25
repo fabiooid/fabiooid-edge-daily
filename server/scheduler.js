@@ -173,7 +173,7 @@ async function attemptGeneration(theme, approvedSources) {
   return { title, content, links };
 }
 
-async function generateAndSavePost() {
+export async function generateAndSavePost() {
   console.log('Generating daily post...\n');
 
   const theme = getTodaysTheme();

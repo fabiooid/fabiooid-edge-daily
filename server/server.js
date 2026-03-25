@@ -3,7 +3,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { initializeDatabase, getLatestPost, getAllPosts, getPostBySlug, updatePostContent } from './database.js';
-import { startScheduler } from './scheduler.js';
+import { startScheduler, generateAndSavePost } from './scheduler.js';
 
 dotenv.config();
 
@@ -73,6 +73,12 @@ app.get('/api/posts/:slug', async (req, res) => {
 
 
 
+
+// TEMP: manual trigger
+app.post('/api/trigger-post', requireApiKey, async (req, res) => {
+  res.json({ ok: true, message: 'Post generation started' });
+  generateAndSavePost().catch(err => console.error('Manual trigger error:', err));
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
