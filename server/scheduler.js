@@ -91,27 +91,34 @@ async function validateLinks(links) {
   }
 }
 
-function extractKeywords(title) {
-  // Extract company/product names as keywords (capitalised words, skip common words)
-  const stopWords = new Set(['the','a','an','and','or','for','in','of','to','is','are','on','at','by','as','up','its','with','from','that','this','was','has','have','been','will','be','into','over','about','than','more','also','after','before','between','through','during','within']);
-  return title.split(/\s+/)
-    .filter(w => /^[A-Z]/.test(w) && !stopWords.has(w.toLowerCase()))
-    .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
-    .filter(w => w.length > 2)
-    .slice(0, 5)
-    .join(', ');
+function titleOverlapsExcluded(newTitle, recentTitles) {
+  const stopWords = new Set(['the','a','an','and','or','for','in','of','to','is','are','on','at','by','as','up','its','with','from','that','this','was','has','have','been','will','be','into','over','about','than','more','also','after','after','billion','million','new','first','latest']);
+  const keywords = newTitle.toLowerCase().split(/\s+/)
+    .map(w => w.replace(/[^a-z0-9]/g, ''))
+    .filter(w => w.length > 3 && !stopWords.has(w));
+  return recentTitles.some(recent => {
+    const recentWords = recent.toLowerCase().split(/\s+/)
+      .map(w => w.replace(/[^a-z0-9]/g, ''))
+      .filter(w => w.length > 3 && !stopWords.has(w));
+    const matches = keywords.filter(k => recentWords.includes(k));
+    return matches.length >= 2;
+  });
 }
 
-function buildPrompt(theme, approvedSources, excludeTopics = []) {
+function buildPrompt(theme, approvedSources, recentTitles = []) {
   const sourceConstraint = approvedSources
     ? `- ONLY use links from these reputable sources: ${approvedSources.join(', ')}\n        - Do not use any other domains\n        - If you cannot find 3 links from the approved sources for a topic, DO NOT use unapproved sources — instead, abandon that topic and search for a completely different ${theme} story`
     : `- Use links from reputable industry publications, company blogs, or official documentation\n        - Avoid academic papers, government databases, social media, or Wikipedia`;
 
-  const excludeClause = excludeTopics.length > 0
-    ? `STRICTLY AVOID these topics — do not write about them, do not search for them, do not reference them:\n${excludeTopics.map(t => `  - ${t}`).join('\n')}\nPick a completely different ${theme} story.\n\n`
+  const excludeClause = recentTitles.length > 0
+    ? `These topics were already covered recently — DO NOT write about them or anything directly related:\n${recentTitles.map(t => `  - "${t}"`).join('\n')}\nFind a completely different ${theme} story.\n\n`
     : '';
 
-  return `${excludeClause}Search for trending ${theme} topics from this week. Find a specific, newsworthy development.${theme === 'Energy' ? ' Focus on energy technology: EVs, batteries, charging infrastructure, solar, wind, grid storage, and clean energy innovation.' : ''}
+  const base = theme === 'Energy'
+    ? 'trending energy technology EV battery solar renewable news this week'
+    : `trending ${theme} news this week`;
+
+  return `${excludeClause}Search for: "${base}"\nFind a specific, newsworthy ${theme} development from this week.${theme === 'Energy' ? ' Focus on energy technology: EVs, batteries, charging infrastructure, solar, wind, grid storage, and clean energy innovation.' : ''}
 
         Write for a reader who follows tech and business news but is not an expert. Assume basic familiarity. Write as a professional journalist from a news outlet like TechCrunch, Forbes, The Verge, or Wired. Write this as a tech news article. Never use em dashes (—).
 
@@ -144,13 +151,13 @@ async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function attemptGeneration(theme, approvedSources, excludeTopics = []) {
+async function attemptGeneration(theme, approvedSources, recentTitles = []) {
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 2048,
     temperature: 0.7,
     tools: [{ type: "web_search_20250305", name: "web_search" }],
-    messages: [{ role: 'user', content: buildPrompt(theme, approvedSources, excludeTopics) }],
+    messages: [{ role: 'user', content: buildPrompt(theme, approvedSources, recentTitles) }],
   });
 
   // Collect only the final text block (last one contains the formatted post)
@@ -200,33 +207,39 @@ export async function generateAndSavePost() {
   const APPROVED_SOURCES = await fetchApprovedSources();
   const approvedList = APPROVED_SOURCES[theme];
 
-  // Seed exclude list with keywords from the last 30 days for this theme
+  // Seed exclude list with titles from the last 30 days for this theme
   const recentPosts = await getPostsByTheme(theme);
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 30);
-  const recentKeywords = recentPosts
+  const recentTitles = recentPosts
     .filter(p => new Date(p.date) >= cutoff)
-    .map(p => extractKeywords(p.title))
+    .map(p => p.title)
     .filter(Boolean);
-  if (recentKeywords.length > 0) {
-    console.log(`📚 Excluding keywords from ${recentKeywords.length} recent posts`);
+  if (recentTitles.length > 0) {
+    console.log(`📚 Excluding ${recentTitles.length} recently covered topics`);
   }
 
   let title, content, links;
   let usedApprovedSources = true;
-  const excludeTopics = [...recentKeywords];
+  const bannedTitles = [...recentTitles];
 
   // Try up to 3 times with approved sources only
   for (let attempt = 1; attempt <= 3; attempt++) {
     console.log(`🔄 Attempt ${attempt}/3 (approved sources only)...`);
     try {
-      ({ title, content, links } = await attemptGeneration(theme, approvedList, excludeTopics));
+      ({ title, content, links } = await attemptGeneration(theme, approvedList, bannedTitles));
+
+      // Check if content overlaps with a recently covered topic
+      if (titleOverlapsExcluded(title, recentTitles)) {
+        if (!bannedTitles.includes(title)) bannedTitles.push(title);
+        console.warn(`⚠️ Attempt ${attempt}: generated content overlaps with a recent post. Banning: "${title}"`);
+        throw new Error('Topic already covered');
+      }
 
       const unapproved = links.filter(l => !isApprovedDomain(l.url, approvedList));
       if (unapproved.length > 0) {
-        const kw = extractKeywords(title);
-        if (kw) excludeTopics.push(kw);
-        console.warn(`⚠️ Attempt ${attempt}: unapproved domains used: ${unapproved.map(l => new URL(l.url).hostname).join(', ')}. Banning keywords: "${kw}"`);
+        if (!bannedTitles.includes(title)) bannedTitles.push(title);
+        console.warn(`⚠️ Attempt ${attempt}: unapproved domains: ${unapproved.map(l => new URL(l.url).hostname).join(', ')}. Banning: "${title}"`);
         throw new Error('Unapproved sources');
       }
 
@@ -234,17 +247,11 @@ export async function generateAndSavePost() {
       break;
     } catch (err) {
       console.warn(`⚠️ Attempt ${attempt} failed: ${err.message}`);
-      if (title) {
-        const kw = extractKeywords(title);
-        if (kw && !excludeTopics.includes(kw)) excludeTopics.push(kw);
-      }
       if (attempt < 3) {
-        // If rate limited, wait for the retry-after period; otherwise wait 15s
         const retryAfter = err.status === 429 ? ((err.headers?.['retry-after'] || 60) * 1000) : 15000;
         console.log(`⏳ Waiting ${Math.round(retryAfter / 1000)}s before next attempt...`);
         await sleep(retryAfter);
       } else {
-        // Final fallback — no source restriction, wait if rate limited
         if (err.status === 429) {
           const retryAfter = (err.headers?.['retry-after'] || 60) * 1000;
           console.log(`⏳ Rate limited. Waiting ${Math.round(retryAfter / 1000)}s before fallback...`);
@@ -252,7 +259,7 @@ export async function generateAndSavePost() {
         }
         console.warn('⚠️ All approved-source attempts failed. Falling back to open sources...');
         usedApprovedSources = false;
-        ({ title, content, links } = await attemptGeneration(theme, null));
+        ({ title, content, links } = await attemptGeneration(theme, null, bannedTitles));
       }
     }
   }
