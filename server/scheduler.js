@@ -91,36 +91,44 @@ async function validateLinks(links) {
   }
 }
 
+function extractKeywords(title) {
+  // Extract company/product names as keywords (capitalised words, skip common words)
+  const stopWords = new Set(['the','a','an','and','or','for','in','of','to','is','are','on','at','by','as','up','its','with','from','that','this','was','has','have','been','will','be','into','over','about','than','more','also','after','before','between','through','during','within']);
+  return title.split(/\s+/)
+    .filter(w => /^[A-Z]/.test(w) && !stopWords.has(w.toLowerCase()))
+    .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
+    .filter(w => w.length > 2)
+    .slice(0, 5)
+    .join(', ');
+}
+
 function buildPrompt(theme, approvedSources, excludeTopics = []) {
   const sourceConstraint = approvedSources
     ? `- ONLY use links from these reputable sources: ${approvedSources.join(', ')}\n        - Do not use any other domains\n        - If you cannot find 3 links from the approved sources for a topic, DO NOT use unapproved sources — instead, abandon that topic and search for a completely different ${theme} story`
     : `- Use links from reputable industry publications, company blogs, or official documentation\n        - Avoid academic papers, government databases, social media, or Wikipedia`;
 
   const excludeClause = excludeTopics.length > 0
-    ? `\n        IMPORTANT: Do NOT write about the following topics that were already attempted: ${excludeTopics.join(', ')}. Find a different story.`
+    ? `STRICTLY AVOID these topics — do not write about them, do not search for them, do not reference them:\n${excludeTopics.map(t => `  - ${t}`).join('\n')}\nPick a completely different ${theme} story.\n\n`
     : '';
 
-  return `Search for trending ${theme} topics from this week from online articles and news. Find a specific, newsworthy development that would interest someone learning about ${theme}.${theme === 'Energy' ? ' Focus on energy technology: EVs, batteries, charging infrastructure, solar, wind, grid storage, and clean energy innovation. Think about what engineers and product people at companies like Tesla, Rivian, or utility-scale solar firms would want to read.' : ''}${excludeClause}
+  return `${excludeClause}Search for trending ${theme} topics from this week. Find a specific, newsworthy development.${theme === 'Energy' ? ' Focus on energy technology: EVs, batteries, charging infrastructure, solar, wind, grid storage, and clean energy innovation.' : ''}
 
         Write for a reader who follows tech and business news but is not an expert. Assume basic familiarity. Write as a professional journalist from a news outlet like TechCrunch, Forbes, The Verge, or Wired. Write this as a tech news article. Never use em dashes (—).
 
         CRITICAL REQUIREMENTS FOR LINKS:
         - You MUST include exactly 3 links
         - Use ACTUAL URLs from your search results
-        - NEVER create Google search links like "https://www.google.com/search?q=..."
-        - Links must be to real articles, documentation, or resources you found
-        - Each link should be highly relevant to the specific topic discussed
+        - NEVER create Google search links
+        - Links must be to real articles you found
         ${sourceConstraint}
 
-        IMPORTANT: Respond ONLY with the formatted post below. Do not include any commentary, explanations, or notes about your process.
-
-        Format (use EXACTLY this format, nothing else):
-        TITLE: [catchy title about the specific development]
-        CONTENT: [2-3 paragraphs, 250-300 words. Tech news article style — lead with the news, then context and significance. No meta-commentary, no over-explaining basic concepts.]
+        Respond ONLY with this exact format — no commentary before or after:
+        TITLE: [title]
+        CONTENT: [2-3 paragraphs, 250-300 words, news article style]
         LINKS:
-        - [Actual article title from search results] [Actual URL from search results]
-        - [Actual article title from search results] [Actual URL from search results]
-        - [Actual article title from search results] [Actual URL from search results]`;
+        - [Article title] [URL]
+        - [Article title] [URL]
+        - [Article title] [URL]`;
 }
 
 function isApprovedDomain(url, approvedSources) {
@@ -177,10 +185,6 @@ async function attemptGeneration(theme, approvedSources, excludeTopics = []) {
   return { title, content, links };
 }
 
-function extractTopic(title) {
-  // Extract a short topic description from the title to use as an exclude hint
-  return title ? title.split(':')[0].trim() : null;
-}
 
 export async function generateAndSavePost() {
   console.log('Generating daily post...\n');
@@ -196,20 +200,21 @@ export async function generateAndSavePost() {
   const APPROVED_SOURCES = await fetchApprovedSources();
   const approvedList = APPROVED_SOURCES[theme];
 
-  // Seed exclude list with titles from the last 30 days for this theme
+  // Seed exclude list with keywords from the last 30 days for this theme
   const recentPosts = await getPostsByTheme(theme);
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 30);
-  const recentTitles = recentPosts
+  const recentKeywords = recentPosts
     .filter(p => new Date(p.date) >= cutoff)
-    .map(p => p.title);
-  if (recentTitles.length > 0) {
-    console.log(`📚 Excluding ${recentTitles.length} recently covered topics`);
+    .map(p => extractKeywords(p.title))
+    .filter(Boolean);
+  if (recentKeywords.length > 0) {
+    console.log(`📚 Excluding keywords from ${recentKeywords.length} recent posts`);
   }
 
   let title, content, links;
   let usedApprovedSources = true;
-  const excludeTopics = [...recentTitles];
+  const excludeTopics = [...recentKeywords];
 
   // Try up to 3 times with approved sources only
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -219,9 +224,9 @@ export async function generateAndSavePost() {
 
       const unapproved = links.filter(l => !isApprovedDomain(l.url, approvedList));
       if (unapproved.length > 0) {
-        const topic = extractTopic(title);
-        if (topic) excludeTopics.push(topic);
-        console.warn(`⚠️ Attempt ${attempt}: unapproved domains used: ${unapproved.map(l => new URL(l.url).hostname).join(', ')}. Excluding topic: "${topic}"`);
+        const kw = extractKeywords(title);
+        if (kw) excludeTopics.push(kw);
+        console.warn(`⚠️ Attempt ${attempt}: unapproved domains used: ${unapproved.map(l => new URL(l.url).hostname).join(', ')}. Banning keywords: "${kw}"`);
         throw new Error('Unapproved sources');
       }
 
@@ -229,10 +234,9 @@ export async function generateAndSavePost() {
       break;
     } catch (err) {
       console.warn(`⚠️ Attempt ${attempt} failed: ${err.message}`);
-      // If parse failed but we got a title, exclude that topic too
-      if (title && !excludeTopics.includes(extractTopic(title))) {
-        const topic = extractTopic(title);
-        if (topic) excludeTopics.push(topic);
+      if (title) {
+        const kw = extractKeywords(title);
+        if (kw && !excludeTopics.includes(kw)) excludeTopics.push(kw);
       }
       if (attempt < 3) {
         // If rate limited, wait for the retry-after period; otherwise wait 15s

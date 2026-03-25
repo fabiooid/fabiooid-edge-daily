@@ -238,6 +238,15 @@ function updatePostContent(slug, title, content) {
   });
 }
 
+function deletePostById(id) {
+  return new Promise((resolve, reject) => {
+    db.run('DELETE FROM posts WHERE id = ?', [id], function(err) {
+      if (err) reject(err);
+      else resolve({ changes: this.changes });
+    });
+  });
+}
+
 export {
     initializeDatabase,
     createPost,
@@ -246,5 +255,6 @@ export {
     getAllPosts,
     getPostsByTheme,
     updatePostLinks,
-    updatePostContent
+    updatePostContent,
+    deletePostById
 };
