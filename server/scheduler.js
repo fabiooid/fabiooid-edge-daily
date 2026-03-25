@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import Anthropic from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
-import { createPost } from './database.js';
+import { createPost, getPostsByTheme } from './database.js';
 import { getTodaysTheme } from './theme-scheduler.js';
 
 dotenv.config();
@@ -196,9 +196,20 @@ export async function generateAndSavePost() {
   const APPROVED_SOURCES = await fetchApprovedSources();
   const approvedList = APPROVED_SOURCES[theme];
 
+  // Seed exclude list with titles from the last 30 days for this theme
+  const recentPosts = await getPostsByTheme(theme);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const recentTitles = recentPosts
+    .filter(p => new Date(p.date) >= cutoff)
+    .map(p => p.title);
+  if (recentTitles.length > 0) {
+    console.log(`📚 Excluding ${recentTitles.length} recently covered topics`);
+  }
+
   let title, content, links;
   let usedApprovedSources = true;
-  const excludeTopics = [];
+  const excludeTopics = [...recentTitles];
 
   // Try up to 3 times with approved sources only
   for (let attempt = 1; attempt <= 3; attempt++) {
