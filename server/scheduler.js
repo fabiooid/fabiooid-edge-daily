@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import Anthropic from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
 import { createPost, getPostsByTheme } from './database.js';
+import { runEval } from './eval.js';
 import { getTodaysTheme } from './theme-scheduler.js';
 
 dotenv.config();
@@ -284,6 +285,9 @@ export async function generateAndSavePost(themeOverride = null, dateOverride = n
   console.log('🎯 Theme:', theme);
 
   await suggestNewSources(links, theme);
+
+  // Run eval after post is saved (non-blocking)
+  runEval(post, recentTitles).catch(err => console.error('Eval error:', err));
 
   console.log('\nRefresh your browser to see it!');
 }
