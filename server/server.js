@@ -92,17 +92,6 @@ app.delete('/api/posts/:slug', requireApiKey, async (req, res) => {
   }
 });
 
-// TEMP: run eval on a post by slug
-app.post('/api/run-eval/:slug', requireApiKey, async (req, res) => {
-  try {
-    const post = await getPostBySlug(req.params.slug);
-    if (!post) return res.status(404).json({ error: 'Post not found' });
-    res.json({ ok: true, message: `Eval started for: ${post.title}` });
-    runEval(post, []).catch(err => console.error('Eval error:', err));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
