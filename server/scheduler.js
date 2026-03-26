@@ -92,28 +92,37 @@ async function validateLinks(links) {
 }
 
 
-function buildPrompt(theme, approvedSources, recentTitles = []) {
-  const sourceConstraint = approvedSources
-    ? `- ONLY use links from these reputable sources: ${approvedSources.join(', ')}\n        - Do not use any other domains\n        - If you cannot find 3 links from the approved sources for a topic, DO NOT use unapproved sources — instead, abandon that topic and search for a completely different ${theme} story`
-    : `- Use links from reputable industry publications, company blogs, official documentation, or university research pages\n        - Avoid government databases, social media, or Wikipedia`;
-
+function buildTopicPrompt(theme, approvedSources, recentTitles) {
   const excludeClause = recentTitles.length > 0
-    ? `These topics were already covered recently — DO NOT write about them or anything directly related:\n${recentTitles.map(t => `  - "${t}"`).join('\n')}\nFind a completely different ${theme} story.\n\n`
+    ? `These topics were already covered recently — do NOT suggest them:\n${recentTitles.map(t => `  - "${t}"`).join('\n')}\n\n`
     : '';
 
-  const base = theme === 'Energy'
-    ? 'trending energy technology EV battery solar renewable news this week'
-    : `trending ${theme} news this week`;
+  const focus = theme === 'Energy'
+    ? 'energy technology — EVs, batteries, solar, wind, grid storage, clean energy innovation'
+    : theme;
 
-  return `${excludeClause}Search for: "${base}"\nFind a specific, newsworthy ${theme} development from this week.${theme === 'Energy' ? ' Focus on energy technology: EVs, batteries, charging infrastructure, solar, wind, grid storage, and clean energy innovation.' : ''}
+  return `${excludeClause}Search for the most interesting ${focus} news story from this week that has coverage on these domains: ${approvedSources.join(', ')}.
 
-        Write for a reader who follows tech and business news but is not an expert. Assume basic familiarity. Write as a professional journalist from a news outlet like TechCrunch, Forbes, The Verge, or Wired. Write this as a tech news article. Never use em dashes (—).
+Pick ONE specific, newsworthy story. Respond ONLY with this format — no other text:
+TOPIC: [one-line headline describing the specific story]
+CONTEXT: [1-2 sentences summarising what happened and why it matters]`;
+}
+
+function buildPrompt(theme, approvedSources, topic) {
+  const sourceConstraint = approvedSources
+    ? `- ONLY use links from these reputable sources: ${approvedSources.join(', ')}\n        - Do not use any other domains`
+    : `- Use links from reputable industry publications, company blogs, or official documentation\n        - Avoid government databases, social media, or Wikipedia`;
+
+  return `Write a tech news article about this story: "${topic}"
+
+        Search for 3 real article URLs specifically covering this story.
+
+        Write for a reader who follows tech and business news but is not an expert. Assume basic familiarity. Write as a professional journalist from a news outlet like TechCrunch, Forbes, The Verge, or Wired. Never use em dashes (—).
 
         CRITICAL REQUIREMENTS FOR LINKS:
         - You MUST include exactly 3 links
-        - Use ACTUAL URLs from your search results
-        - NEVER create Google search links
-        - Links must be to real articles you found
+        - Use ACTUAL URLs from your search results — never Google search links
+        - Links must be real articles directly about this story
         ${sourceConstraint}
 
         Respond ONLY with this exact format — no commentary before or after:
@@ -123,6 +132,27 @@ function buildPrompt(theme, approvedSources, recentTitles = []) {
         - [Article title] [URL]
         - [Article title] [URL]
         - [Article title] [URL]`;
+}
+
+async function selectTopic(theme, approvedSources, recentTitles) {
+  const message = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 512,
+    tools: [{ type: "web_search_20250305", name: "web_search" }],
+    messages: [{ role: 'user', content: buildTopicPrompt(theme, approvedSources, recentTitles) }],
+  });
+
+  const response = message.content
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+    .join('\n');
+
+  const topicMatch = response.match(/TOPIC: (.+)/);
+  if (!topicMatch) throw new Error('Haiku did not return a valid TOPIC');
+
+  const topic = topicMatch[1].trim();
+  console.log(`🔍 Haiku selected topic: "${topic}"`);
+  return topic;
 }
 
 function isApprovedDomain(url, approvedSources) {
@@ -135,13 +165,14 @@ function isApprovedDomain(url, approvedSources) {
 }
 
 
-async function attemptGeneration(theme, approvedSources, recentTitles = []) {
+async function attemptGeneration(theme, approvedSources, topic) {
+  console.log(`✍️  Sonnet writing article${approvedSources ? ' (approved sources)' : ' (open sources)'}...`);
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 4096,
     temperature: 0.7,
     tools: [{ type: "web_search_20250305", name: "web_search" }],
-    messages: [{ role: 'user', content: buildPrompt(theme, approvedSources, recentTitles) }],
+    messages: [{ role: 'user', content: buildPrompt(theme, approvedSources, topic) }],
   });
 
   // Concatenate all text blocks — TITLE/CONTENT/LINKS may be split across multiple blocks
@@ -209,24 +240,32 @@ export async function generateAndSavePost(themeOverride = null, dateOverride = n
     console.log(`📚 Excluding ${recentTitles.length} recently covered topics`);
   }
 
+  // Step 1: Haiku selects the topic
+  let topic;
+  try {
+    topic = await selectTopic(theme, approvedList, recentTitles);
+  } catch (err) {
+    console.warn(`⚠️ Haiku topic selection failed: ${err.message}. Using open-ended prompt.`);
+    topic = `a trending ${theme} development from this week`;
+  }
+
   let title, content, links;
   let usedApprovedSources = true;
 
-  // Attempt 1: approved sources only
+  // Step 2: Sonnet writes the article
   try {
-    console.log('🔄 Attempt 1: approved sources...');
-    ({ title, content, links } = await attemptGeneration(theme, approvedList, recentTitles));
+    ({ title, content, links } = await attemptGeneration(theme, approvedList, topic));
     console.log('✅ All links from approved sources');
   } catch (err) {
-    console.warn(`⚠️ Attempt 1 failed: ${err.message}`);
+    console.warn(`⚠️ Sonnet attempt failed: ${err.message}`);
     usedApprovedSources = false;
-    const waitMs = err.status === 429
-      ? ((parseInt(err.headers?.['retry-after']) || 65) * 1000)
-      : 65000;
-    console.warn(`⏳ Waiting ${Math.round(waitMs / 1000)}s before fallback...`);
-    await new Promise(r => setTimeout(r, waitMs));
+    if (err.status === 429) {
+      const waitMs = (parseInt(err.headers?.['retry-after']) || 65) * 1000;
+      console.warn(`⏳ Rate limited. Waiting ${Math.round(waitMs / 1000)}s before fallback...`);
+      await new Promise(r => setTimeout(r, waitMs));
+    }
     console.warn('⚠️ Falling back to open sources...');
-    ({ title, content, links } = await attemptGeneration(theme, null, recentTitles));
+    ({ title, content, links } = await attemptGeneration(theme, null, topic));
   }
 
   console.log('\n📎 Found', links.length, 'valid links');
