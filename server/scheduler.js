@@ -190,8 +190,8 @@ async function attemptGeneration(theme, approvedSources, topic) {
   if (!titleMatch) throw new Error('Malformed response: missing TITLE');
   if (!contentMatch || !contentMatch[1].trim()) throw new Error('Malformed response: missing CONTENT');
 
-  const title = titleMatch[1].trim();
-  const content = contentMatch[1].replace(/LINKS:[\s\S]*/i, '').trim();
+  const title = titleMatch[1].trim().replace(/—/g, '-');
+  const content = contentMatch[1].replace(/LINKS:[\s\S]*/i, '').trim().replace(/—/g, '-');
 
   let links = [];
   if (linksMatch) {
