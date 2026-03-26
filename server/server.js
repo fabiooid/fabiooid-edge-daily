@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { initializeDatabase, getLatestPost, getAllPosts, getPostBySlug, updatePostContent, deletePostById } from './database.js';
 import { startScheduler, generateAndSavePost } from './scheduler.js';
+import { runEval } from './eval.js';
 
 dotenv.config();
 
@@ -86,6 +87,18 @@ app.delete('/api/posts/:slug', requireApiKey, async (req, res) => {
     if (!post) return res.status(404).json({ error: 'Post not found' });
     const result = await deletePostById(post.id);
     res.json({ deleted: result.changes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// TEMP: run eval on a post by slug
+app.post('/api/run-eval/:slug', requireApiKey, async (req, res) => {
+  try {
+    const post = await getPostBySlug(req.params.slug);
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+    res.json({ ok: true, message: `Eval started for: ${post.title}` });
+    runEval(post, []).catch(err => console.error('Eval error:', err));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
