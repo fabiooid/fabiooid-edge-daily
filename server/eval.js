@@ -54,8 +54,9 @@ export async function runEval(post, recentTitles = []) {
   const wordCount = post.content.trim().split(/\s+/).length;
   const hasEmDash = post.content.includes('—') || post.title.includes('—');
 
-  // Format links for the prompt
-  const linksText = (post.links || []).map((l, i) => `${i + 1}. ${l.title} — ${l.url}`).join('\n');
+  // Format links for the prompt (links may be stored as JSON string)
+  const links = typeof post.links === 'string' ? JSON.parse(post.links) : (post.links || []);
+  const linksText = links.map((l, i) => `${i + 1}. ${l.title} - ${l.url}`).join('\n');
   const recentContext = recentTitles.length > 0
     ? `\nRecently covered titles (for topic_freshness):\n${recentTitles.map(t => `- ${t}`).join('\n')}\n`
     : '';
