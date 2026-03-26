@@ -144,10 +144,11 @@ async function attemptGeneration(theme, approvedSources, recentTitles = []) {
     messages: [{ role: 'user', content: buildPrompt(theme, approvedSources, recentTitles) }],
   });
 
-  // Find the text block that contains the formatted post (not always the last one)
-  const textBlocks = message.content.filter(b => b.type === 'text');
-  const response = textBlocks.find(b => b.text.includes('TITLE:'))?.text ||
-                   textBlocks[textBlocks.length - 1]?.text || '';
+  // Concatenate all text blocks — TITLE/CONTENT/LINKS may be split across multiple blocks
+  const response = message.content
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+    .join('\n');
 
   console.log('Full response:\n', response);
 
